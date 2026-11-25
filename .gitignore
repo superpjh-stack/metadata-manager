@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.local-secret
+*.sqlite3*
+media/
+backups/
+staticfiles/
+.DS_Store
+.local-demo-login
+demo-media/

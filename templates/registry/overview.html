@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}개요 · 제조데이터 관리대장{% endblock %}
+{% block content %}
+<header class="page-header"><div><span class="eyebrow">WORKFLOW OVERVIEW</span><h1>메타데이터 관리 개요</h1><p>무엇을 수집하고, 어떻게 관리하며, 어떤 자료를 제출하는지 순서대로 확인하세요.</p></div><a class="button primary" href="{% url 'index' %}">데이터 목록 보기</a></header>
+<section class="overview-intro"><div><span class="eyebrow">관리 목적</span><h2>데이터의 내용·출처·권리·활용조건을 <br>하나의 관리대장으로 정리합니다.</h2><p>‘1호기 온도 이력’, ‘제품 품질검사 결과’처럼 함께 관리하는 데이터 묶음을<br class="desktop-break"> 하나의 데이터셋으로 등록하고, 정의부터 점검·제출까지 연결합니다.</p></div><div class="overview-example"><span>관리 단위 예시</span><strong>1호기 온도 이력</strong><dl><div><dt>출처</dt><dd>1호기 온도 센서</dd></div><div><dt>컬럼</dt><dd>측정시각 · 온도(℃)</dd></div><div><dt>활용</dt><dd>내부 공정 분석</dd></div></dl><small>실제 수집 현황이 아닌 설명용 예시입니다.</small></div></section>
+<section class="panel"><div class="panel-heading"><h2>메타데이터 관리 프로세스</h2><span class="muted small">최초 설정 후 등록·점검·보완을 반복합니다.</span></div><ol class="process-list">
+<li><span class="process-number">1</span><div><h3>관리 기준 설정</h3><p>기업명·사업기간을 입력하고, 사업에서 요구하는 추가 메타데이터 항목을 설정합니다.</p><span class="process-output">결과 · 기업·사업 정보와 관리항목</span></div><div class="process-menu"><span>사용 메뉴</span>{% if user.is_staff %}<a href="{% url 'settings' %}">사업·항목 설정</a>{% else %}<strong>사업·항목 설정</strong><small>관리자 담당</small>{% endif %}</div></li>
+<li><span class="process-number">2</span><div><h3>데이터셋 등록</h3><p>공정·설비별 데이터 이름, 설명, 담당자를 등록합니다. 기존 대장은 표준 Excel 양식으로 가져올 수 있습니다.</p><span class="process-output">결과 · 데이터 목록과 고유 관리번호</span></div><div class="process-menu"><span>사용 메뉴</span><a href="{% url 'index' %}">데이터 목록</a>{% if user.is_staff %}<a href="{% url 'import' %}">Excel 가져오기</a>{% endif %}</div></li>
+<li><span class="process-number">3</span><div><h3>데이터 정의 작성</h3><p>수집 출처·방법·주기, 저장 위치, 권리·이용조건을 작성하고 컬럼의 의미·자료형·단위를 정의합니다.</p><span class="process-output">결과 · 데이터 정의 및 컬럼 정의</span></div><div class="process-menu"><span>사용 메뉴</span><a href="{% url 'index' %}">데이터 목록</a><small>데이터 선택 → 상세·편집</small></div></li>
+<li><span class="process-number">4</span><div><h3>점검 및 보완</h3><p>필수항목 누락과 관리현황을 확인합니다. 담당자·DX멘토단의 점검 의견을 기록하고 조치 내용과 증빙을 보완합니다.</p><span class="process-output">결과 · 점검 기록, 조치 내용, 증빙</span></div><div class="process-menu"><span>사용 메뉴</span><a href="{% url 'submissions' %}">점검·제출</a><small>기록·조치는 데이터 상세에서 입력</small></div></li>
+<li><span class="process-number">5</span><div><h3>제출자료 생성·보관</h3><p>제출할 데이터셋을 선택해 Excel을 생성합니다. 생성 당시 내용은 보존되며, 이후 원본을 수정해도 기존 제출본은 유지됩니다.</p><span class="process-output">결과 · 데이터 정의·관리현황 Excel과 제출본</span></div><div class="process-menu"><span>사용 메뉴</span><a href="{% url 'submissions' %}">점검·제출</a><small>제출본 생성 및 다운로드</small></div></li>
+</ol></section>
+<section class="panel"><div class="panel-heading"><h2>메뉴별 사용 안내</h2></div><div class="table-wrap"><table class="menu-guide"><thead><tr><th>메뉴</th><th>이럴 때 사용하세요</th><th>주요 기능</th></tr></thead><tbody>
+<tr><td><a href="{% url 'overview' %}">개요</a></td><td>전체 업무 순서를 확인할 때</td><td>관리 프로세스와 메뉴 안내</td></tr>
+<tr><td><a href="{% url 'index' %}">데이터 목록</a></td><td>데이터를 찾거나 정의를 관리할 때</td><td>검색·등록·수정, 컬럼 정의, 점검 기록, 증빙·변경 이력</td></tr>
+<tr><td><a href="{% url 'submissions' %}">점검·제출</a></td><td>보완사항을 확인하거나 제출자료가 필요할 때</td><td>누락·미완료 조치 확인, 제출 대상 선택, Excel 생성·다운로드</td></tr>
+<tr><td>{% if user.is_staff %}<a href="{% url 'import' %}">Excel 가져오기</a>{% else %}Excel 가져오기{% endif %}</td><td>기존 대장을 한 번에 등록할 때</td><td>표준 양식 다운로드, 오류 검증, 미리보기, 신규 일괄 등록 <small class="muted">(관리자)</small></td></tr>
+<tr><td>{% if user.is_staff %}<a href="{% url 'settings' %}">사업·항목 설정</a>{% else %}사업·항목 설정{% endif %}</td><td>처음 시작하거나 관리항목이 바뀌었을 때</td><td>기업·사업 정보, 추가 항목의 필수·활성 여부 설정 <small class="muted">(관리자)</small></td></tr>
+</tbody></table></div></section>
+<section class="panel"><div class="panel-heading"><h2>상태를 읽는 방법</h2></div><div class="overview-status"><div><h3>수집 상태</h3><p>준비 중 · 수집 중 · 일시 중단 · 종료</p><small>담당자가 기록하는 실제 수집 업무의 현황입니다.</small></div><div><h3>입력 상태</h3><p>미입력 있음 · 입력 완료</p><small>현재 필수 메타데이터 항목의 입력 여부로 계산합니다.</small></div><div><h3>점검 상태</h3><p>미점검 · 보완 필요 · 점검 완료</p><small>점검 기록과 미완료 보완사항을 기준으로 계산합니다.</small></div></div></section>
+<p class="footnote">이 시스템은 메타데이터와 관리현황을 기록합니다. 실제 데이터 자동 수집·AAS 연계는 포함하지 않으며, 입력·점검 완료가 공식 적합성 판정을 의미하지 않습니다. 제출 시 사업별 공식 항목과 양식을 확인하세요.</p>
+{% endblock %}
