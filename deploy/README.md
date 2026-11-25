@@ -39,3 +39,11 @@ Container resources: 512MB memory, 1 CPU; automatic restart unless explicitly st
 This deployment uses the existing VPS and gateway; it does not purchase hosting, change DNS zones, reset other services, or create a separate Traefik instance. The IP-based hostname can be replaced later by an owned domain.
 
 References: [Hostinger project management](https://www.hostinger.com/support/hostinger-vps-how-to-manage-your-docker-projects/), [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/), [WhiteNoise Django setup](https://whitenoise.readthedocs.io/en/stable/django.html).
+
+## Deployment verification — 2026-11-26
+
+- Restored the existing local database and evidence with SHA-256 checks.
+- Container reports healthy; HTTPS certificate validation succeeds.
+- Verified real administrator login with CSRF, Secure session cookies, hashed static assets, all main pages, evidence download and existing submission download.
+- Dedicated HTTPS hostname; HSTS is limited to this hostname (no includeSubDomains or preload).
+- Deployment tests: 26 passing, including trusted HTTPS proxy handling and health endpoint.

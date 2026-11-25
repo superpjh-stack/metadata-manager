@@ -1,5 +1,7 @@
 # 제조데이터 메타데이터 관리 시스템
 
+배포 주소: **https://metadata.187.52.127.215.sslip.io** · [Docker 운영 안내](deploy/README.md)
+
 한 기업·한 사업의 제조데이터 등록, 정의, 점검, Excel 제출자료 생성을 위한 작은 내부 웹 시스템입니다.
 
 Django 서버 렌더링, SQLite, openpyxl을 사용합니다. 실제 측정 데이터는 수집하지 않고 저장 위치와 수집 현황을 담당자가 기록합니다. 공식 제출 서식·적합성 판정·AAS 연계 서버는 포함하지 않습니다.
@@ -153,7 +155,7 @@ DB_PATH="$PWD/restored-data/db.sqlite3" MEDIA_ROOT="$PWD/restored-data/media" .v
 
 ## 운영 범위
 
-현재는 로컬 실행 버전입니다. 외부 배포·HTTPS·정기 백업 스케줄 등록은 하지 않았습니다. `runserver`는 로컬 확인용입니다. 실제 서비스 배포 시 WSGI 서버, HTTPS, 정적 파일 제공, 백업 스케줄을 설정해야 합니다.
+Hostinger VPS에 Docker·Gunicorn·HTTPS로 배포했습니다. Docker 구성과 운영 절차는 `deploy/README.md`를 참조하세요. 정기 백업 스케줄은 아직 등록하지 않았습니다. `runserver`는 로컬 확인용입니다. 실제 서비스 배포 시 WSGI 서버, HTTPS, 정적 파일 제공, 백업 스케줄을 설정해야 합니다.
 
 DEBUG=0일 때 SECRET_KEY를 반드시 환경변수로 지정해야 하며 세션·CSRF 쿠키는 HTTPS 전용입니다. `.env.example`은 참고 파일이며 자동으로 읽지 않습니다. 코드에 `.local-secret`, `.local-demo-login`, DB, media, backups를 커밋하지 않도록 `.gitignore`에 등록했습니다.
 
