@@ -127,7 +127,7 @@ class WorkflowTests(TestCase):
         submission.refresh_from_db()
         self.assertEqual(bytes(submission.workbook),original);self.assertEqual(submission.snapshot,snapshot)
         wb=load_workbook(BytesIO(original),data_only=False)
-        self.assertEqual(wb.sheetnames,['제출정보','데이터 목록','데이터 정의','컬럼 정의','점검 및 조치','누락 항목','추가 항목'])
+        self.assertEqual(wb.sheetnames,['제출정보','데이터 목록','데이터 정의','컬럼 정의','점검 및 조치','누락 항목','추가 항목','현황 확인'])
         self.assertEqual(wb['데이터 정의']['C2'].data_type,'s')
         self.assertTrue(wb['데이터 정의']['C2'].value.startswith('='))
         self.assertEqual(wb['데이터 목록']['B2'].value,'온도 이력')
@@ -175,7 +175,7 @@ class WorkflowTests(TestCase):
         response=self.client.post(reverse('check_create',args=[obj.pk]),{'date':'2026-11-25','inspector':'담당자','opinion':'보완 내용','needs_action':'on','status':'보완 필요'})
         self.assertEqual(response.status_code,302)
         check=obj.checks.get();self.assertEqual(obj.review_status,'보완 필요')
-        response=self.client.post(reverse('check_edit',args=[obj.pk,check.pk]),{'date':'2026-11-25','inspector':'담당자','opinion':'보완 내용','needs_action':'on','status':'보완 완료','action':'보완 조치 완료','completed_on':'2026-11-25'})
+        response=self.client.post(reverse('check_edit',args=[obj.pk,check.pk]),{'revision':check.updated_at.isoformat(),'date':'2026-11-25','inspector':'담당자','opinion':'보완 내용','needs_action':'on','status':'보완 완료','action':'보완 조치 완료','completed_on':'2026-11-25'})
         self.assertEqual(response.status_code,302);self.assertEqual(obj.review_status,'점검 완료')
         self.assertEqual(Audit.objects.filter(dataset=obj).count(),3)
     def test_nonexistent_submission_target_rejected(self):

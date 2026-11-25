@@ -170,7 +170,7 @@ def create_submission(datasets,user):
     project = Project.objects.first()
     snapshot = {'project':values(project) if project else {},'definitions':[values(f) for f in definitions],'datasets':[]}
     for obj in datasets:
-        snapshot['datasets'].append({'code':obj.code,'assignee':obj.assignee_snapshot(),'data':values(obj,DATA_FIELDS+['extras']),'missing':obj.missing(definitions),'review_status':obj.review_status,'columns':[values(c,COLUMN_FIELDS) for c in obj.columns.all()],'checks':[values(c,['date','inspector','opinion','needs_action','action','status','completed_on']) for c in obj.checks.all()]})
+        snapshot['datasets'].append({'code':obj.code,'assignee':obj.assignee_snapshot(),'data':values(obj,DATA_FIELDS+['extras','confirmation_interval','first_confirmation_due']),'missing':obj.missing(definitions),'review_status':obj.review_status,'columns':[values(c,COLUMN_FIELDS) for c in obj.columns.all()],'next_confirmation_due':str(obj.next_confirmation_due or ''),'confirmations':[{'created_at':c.created_at.isoformat(),'actor':c.actor.username,'outcome':c.get_outcome_display(),'notes':c.notes,'snapshot':c.snapshot} for c in obj.confirmations.all()],'checks':[{**values(c,['date','inspector','opinion','needs_action','action','status','completed_on','due_date','approved_at']),'action_assignee':c.action_assignee.username if c.action_assignee_id else '', 'approved_by':c.approved_by.username if c.approved_by_id else ''} for c in obj.checks.all()]})
     result = Submission(created_by=user,snapshot=snapshot)
     wb = Workbook(); wb.remove(wb.active)
     p = snapshot['project']
@@ -179,9 +179,10 @@ def create_submission(datasets,user):
     sheet(wb,'데이터 목록',['관리번호','데이터명','공정','설비','담당자','수집 상태','입력 상태','점검 상태','담당 계정','담당 계정 이름'],[[r['code'],r['data']['name'],r['data']['process'],r['data']['equipment'],r['data']['owner'],r['data']['collection_status'],'미입력 있음' if r['missing'] else '입력 완료',r['review_status'],(r['assignee'] or {}).get('username',''),(r['assignee'] or {}).get('name','')] for r in rows])
     sheet(wb,'데이터 정의',['관리번호']+HEADERS[1:],[[r['code']]+[date.fromisoformat(r['data'][k]) if k=='started_on' and r['data'][k] else r['data'][k] for k in DATA_FIELDS] for r in rows])
     sheet(wb,'컬럼 정의',['관리번호']+COLUMN_HEADERS[1:],[[r['code']]+[c[k] for k in COLUMN_FIELDS] for r in rows for c in r['columns']])
-    sheet(wb,'점검 및 조치',['관리번호','점검일','점검자','점검 의견','보완 필요','조치 내용','보완 상태','완료일'],[[r['code'],date.fromisoformat(c['date']),c['inspector'],c['opinion'],c['needs_action'],c['action'],c['status'] if c['needs_action'] else '보완 불필요',date.fromisoformat(c['completed_on']) if c['completed_on'] else None] for r in rows for c in r['checks']])
+    sheet(wb,'점검 및 조치',['관리번호','점검일','점검자','점검 의견','보완 필요','조치 내용','보완 상태','완료일','조치 담당 계정','조치 기한','완료 확인자','완료 확인 시각'],[[r['code'],date.fromisoformat(c['date']),c['inspector'],c['opinion'],c['needs_action'],c['action'],c['status'] if c['needs_action'] else '보완 불필요',date.fromisoformat(c['completed_on']) if c['completed_on'] else None,c['action_assignee'],date.fromisoformat(c['due_date']) if c['due_date'] else None,c['approved_by'],c['approved_at']] for r in rows for c in r['checks']])
     sheet(wb,'누락 항목',['관리번호','데이터명','누락 항목'],[[r['code'],r['data']['name'],m] for r in rows for m in r['missing']])
     sheet(wb,'추가 항목',['관리번호','항목 키','항목명','필수','활성','입력값'],[[r['code'],f.key,f.label,f.required,f.active,r['data']['extras'].get(f.key,'')] for r in rows for f in definitions])
+    sheet(wb,'현황 확인',['관리번호','확인 주기(일)','다음 확인 기한','확인 시각','확인자','결과','메모'],[[r['code'],r['data']['confirmation_interval'],r['next_confirmation_due'],c['created_at'],c['actor'],c['outcome'],c['notes']] for r in rows for c in (r['confirmations'] or [{'created_at':'','actor':'','outcome':'미확인','notes':''}])])
     result.workbook = workbook_bytes(wb)
     result.save(force_insert=True)
     audit(user,str(result.pk),{}, {'dataset_codes':[r['code'] for r in rows]},operation='제출본 생성')

@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 from pathlib import Path
 from django.db import models
 from django.conf import settings
@@ -30,6 +31,8 @@ class Dataset(models.Model):
     assignee = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='담당 계정',
                                  on_delete=models.PROTECT, related_name='assigned_datasets',
                                  null=True, blank=True)
+    confirmation_interval = models.PositiveIntegerField('현황 확인 주기',default=30,choices=[(7,'매주 (7일)'),(30,'매월 (30일)'),(90,'분기 (90일)'),(0,'수시 확인')])
+    first_confirmation_due = models.DateField('최초 확인 기한',null=True,blank=True)
     source = models.CharField('원천 시스템 또는 장비',max_length=200,blank=True)
     method = models.CharField('수집방법',max_length=150,blank=True)
     frequency = models.CharField('수집주기',max_length=100,blank=True)
@@ -66,6 +69,42 @@ class Dataset(models.Model):
             return None
         return {'id':self.assignee_id, 'username':self.assignee.username,
                 'name':self.assignee.get_full_name().strip(), 'active':self.assignee.is_active}
+    @property
+    def latest_confirmation(self):
+        return next(iter(self.confirmations.all()),None)
+    @property
+    def last_confirmed(self):
+        return next((c for c in self.confirmations.all() if c.outcome == 'unchanged'),None)
+    @property
+    def confirmation_issue(self):
+        latest = self.latest_confirmation
+        return bool(latest and latest.outcome == 'update_required')
+    @property
+    def next_confirmation_due(self):
+        if self.confirmation_issue:
+            return timezone.localtime(self.latest_confirmation.created_at).date()
+        last = self.last_confirmed
+        if last and self.updated_at > last.created_at:
+            return timezone.localtime(self.updated_at).date()
+        if not self.confirmation_interval:
+            return None
+        if last:
+            return timezone.localtime(last.created_at).date() + timedelta(days=self.confirmation_interval)
+        return self.first_confirmation_due or (timezone.localtime(self.created_at).date() if self.pk else timezone.localdate())
+    @property
+    def confirmation_label(self):
+        if self.confirmation_issue:
+            return '변경사항 확인 필요'
+        if not self.last_confirmed:
+            return '최초 확인 필요' if self.confirmation_interval else '수시 확인'
+        if self.updated_at > self.last_confirmed.created_at:
+            return '수정 후 재확인 필요'
+        due = self.next_confirmation_due
+        if due and due < timezone.localdate():
+            return '기한 경과'
+        if due and due <= timezone.localdate()+timedelta(days=7):
+            return '확인 예정'
+        return '확인 완료'
     def missing(self, definitions=None):
         missing = [str(self._meta.get_field(k).verbose_name) for k in REQUIRED if not str(getattr(self,k) or '').strip()]
         if definitions is None:
@@ -102,11 +141,28 @@ class Check(models.Model):
     opinion = models.TextField('점검 의견')
     needs_action = models.BooleanField('보완 필요',default=False)
     action = models.TextField('조치 내용',blank=True)
-    status = models.CharField('보완 상태',max_length=20,choices=[(x,x) for x in ['보완 필요','보완 중','보완 완료']],default='보완 필요')
+    status = models.CharField('보완 상태',max_length=20,choices=[(x,x) for x in ['보완 필요','보완 중','검토 대기','보완 완료']],default='보완 필요')
     completed_on = models.DateField('조치 완료일',null=True,blank=True)
+    action_assignee = models.ForeignKey(settings.AUTH_USER_MODEL,verbose_name='조치 담당자',null=True,blank=True,on_delete=models.PROTECT,related_name='assigned_checks')
+    due_date = models.DateField('조치 완료 기한',null=True,blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    approved_by = models.ForeignKey(settings.AUTH_USER_MODEL,null=True,blank=True,on_delete=models.PROTECT,related_name='+')
+    approved_at = models.DateTimeField(null=True,blank=True)
+    @property
+    def is_overdue(self):
+        return bool(self.needs_action and self.status != '보완 완료' and self.due_date and self.due_date < timezone.localdate())
+    @property
+    def action_assignee_label(self):
+        if not self.action_assignee_id:
+            return '담당자 미지정'
+        return self.action_assignee.get_full_name().strip() or self.action_assignee.username
     class Meta:
         ordering = ['-date','-id']
     def clean(self):
+        if self.due_date and self.date and self.due_date < self.date:
+            raise ValidationError({'due_date':'완료 기한은 점검일 이후여야 합니다.'})
+        if self.needs_action and self.status == '검토 대기' and not self.action.strip():
+            raise ValidationError({'action':'검토 요청 시 조치 내용을 입력하세요.'})
         if self.needs_action and self.status == '보완 완료':
             if not self.action.strip():
                 raise ValidationError({'action':'보완 완료 시 조치 내용을 입력하세요.'})
@@ -161,3 +217,14 @@ class ImportBatch(models.Model):
     payload = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
     consumed = models.BooleanField(default=False)
+
+
+class Confirmation(models.Model):
+    dataset = models.ForeignKey(Dataset,on_delete=models.PROTECT,related_name='confirmations')
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+    outcome = models.CharField(max_length=30,choices=[('unchanged','변경 없음'),('update_required','변경 필요')])
+    notes = models.TextField(blank=True)
+    snapshot = models.JSONField(default=dict)
+    class Meta:
+        ordering = ['-created_at','-id']

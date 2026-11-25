@@ -5,22 +5,23 @@
 <a class="skip-link" href="#main-content">본문으로 이동</a>
 {% if user.is_authenticated %}
 <aside class="sidebar">
-  <a class="brand" href="{% url 'overview' %}"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>제조데이터<small>Metadata workspace</small></span></a>
+  <a class="brand" href="{% url 'tasks' %}"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i></span><span>제조데이터<small>Metadata workspace</small></span></a>
   <button type="button" class="mobile-menu button" aria-expanded="false" aria-controls="workspace-navigation">메뉴</button>
   <div class="workspace-label"><span class="workspace-mark">W</span><div><strong>데이터 관리 워크스페이스</strong><small>내부 업무용 · 단일 기업</small></div></div>
   <p class="nav-label">워크스페이스</p>
   <nav id="workspace-navigation" aria-label="주 메뉴">
     <a href="{% url 'overview' %}" {% if request.path == '/overview/' %}class="active" aria-current="page"{% endif %}><span>개요</span><span class="nav-short">Overview</span></a>
+    <a href="{% url 'tasks' %}" {% if request.path == '/tasks/' %}class="active" aria-current="page"{% endif %}><span>내 업무</span></a>
     <a href="{% url 'index' %}" {% if request.path == '/' or '/datasets/' in request.path %}class="active" aria-current="page"{% endif %}><span>데이터 목록</span></a>
     <a href="{% url 'submissions' %}" {% if '/submissions/' in request.path %}class="active" aria-current="page"{% endif %}><span>점검·제출</span></a>
     {% if user.is_staff %}<a href="{% url 'import' %}" {% if '/import/' in request.path %}class="active" aria-current="page"{% endif %}><span>Excel 가져오기</span></a><a href="{% url 'settings' %}" {% if '/settings/' in request.path %}class="active" aria-current="page"{% endif %}><span>사업·항목 설정</span></a>{% endif %}
   </nav>
   <a class="sidebar-guide" href="{% url 'overview' %}"><span>관리 프로세스 안내</span><small>등록부터 제출본 보관까지<br>단계별 업무를 확인하세요.</small></a>
-  <div class="sidebar-bottom"><div class="avatar" aria-hidden="true">{{ user.username|first|upper }}</div><div class="user-info"><strong>{{ user.username }}</strong><small>{% if user.is_staff %}관리자{% else %}조회자{% endif %}</small></div><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="logout" title="로그아웃">로그아웃</button></form></div>
+  <div class="sidebar-bottom"><div class="avatar" aria-hidden="true">{{ user.username|first|upper }}</div><div class="user-info"><strong>{{ user.username }}</strong><small>{% if user.is_staff %}관리자{% else %}담당자{% endif %}</small></div><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="logout" title="로그아웃">로그아웃</button></form></div>
 </aside>
 {% endif %}
 <main id="main-content" class="{% if not user.is_authenticated %}public{% endif %}">
-{% if user.is_authenticated %}<div class="topbar"><div class="breadcrumbs"><span>워크스페이스</span><span class="breadcrumb-divider">/</span><strong>{% if request.path == '/overview/' %}개요{% elif '/submissions/' in request.path %}점검·제출{% elif '/import/' in request.path %}Excel 가져오기{% elif '/settings/' in request.path %}사업·항목 설정{% else %}데이터 관리{% endif %}</strong></div><span class="topbar-caption">제조데이터 메타데이터 관리</span></div>{% endif %}
+{% if user.is_authenticated %}<div class="topbar"><div class="breadcrumbs"><span>워크스페이스</span><span class="breadcrumb-divider">/</span><strong>{% if request.path == '/tasks/' %}내 업무{% elif request.path == '/overview/' %}개요{% elif '/submissions/' in request.path %}점검·제출{% elif '/import/' in request.path %}Excel 가져오기{% elif '/settings/' in request.path %}사업·항목 설정{% else %}데이터 관리{% endif %}</strong></div><span class="topbar-caption">제조데이터 메타데이터 관리</span></div>{% endif %}
 <div class="page">{% for message in messages %}<div class="notice {{ message.tags }}" role="status">{{ message }}</div>{% endfor %}{% block content %}{% endblock %}</div>
 </main>
 <script src="{% static 'app.js' %}?v=20261125-modern" defer></script>
