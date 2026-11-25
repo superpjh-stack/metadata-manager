@@ -48,4 +48,6 @@ References: [Hostinger project management](https://www.hostinger.com/support/hos
 - Dedicated HTTPS hostname; HSTS is limited to this hostname (no includeSubDomains or preload).
 - Deployment tests: 26 passing, including trusted HTTPS proxy handling and health endpoint.
 
-HTTP redirect is served by the existing port-80 gateway `gerardo-ai-private-https-1` (`/opt/gerardo-ai-private/Caddyfile`), using the separate site in `Caddyfile.http.example`. TLS/app routing is served by `rodem-mes-caddy-1` (`/docker/rodem-mes/Caddyfile`). Both original gateway configs were backed up as `Caddyfile.before-metadata-<timestamp>` and validated before graceful reload. Other sites were preserved.
+TLS/app routing is served by `rodem-mes-caddy-1` (`/docker/rodem-mes/Caddyfile`). Its original configuration was backed up as `Caddyfile.before-metadata-<timestamp>` and validated before graceful reload. Other sites were preserved.
+
+HTTP port 80 belongs to another shared gateway (`gerardo-ai-private-https-1`, Caddy 2.10.2 with admin API disabled). Its redirect candidate validated, but a graceful API reload was unavailable. The original file was restored and the container was not restarted. Use the explicit HTTPS URL. `Caddyfile.http.example` is an unapplied optional template for a future scheduled gateway update.
