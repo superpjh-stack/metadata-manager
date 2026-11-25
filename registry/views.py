@@ -3,15 +3,16 @@ from functools import wraps
 from pathlib import Path
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import FileResponse, HttpResponse, Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from .models import Dataset, Check, Column, Project, ExtraField, Attachment, Submission, ImportBatch
-from .forms import DatasetForm, ColumnFormSet, CheckForm, ProjectForm, ExtraForm, AttachmentForm, DATA_FIELDS
+from .forms import DatasetForm, ColumnFormSet, CheckForm, ProjectForm, ExtraForm, AttachmentForm, AssigneeAccountForm, DATA_FIELDS
 from .services import values, audit, import_template, parse_import, save_import, create_submission
 
 def health(request):
@@ -30,7 +31,7 @@ def manager_only(view):
     return wrapped
 
 def queryset():
-    return Dataset.objects.filter(archived=False).prefetch_related('checks','columns')
+    return Dataset.objects.filter(archived=False).select_related('assignee').prefetch_related('checks','columns')
 
 @login_required
 def overview(request):
@@ -42,6 +43,15 @@ def index(request):
     definitions = list(ExtraField.objects.filter(active=True))
     summary = {'total':len(all_rows),'missing':sum(bool(d.missing(definitions)) for d in all_rows),'action':sum(d.review_status=='보완 필요' for d in all_rows)}
     rows = all_rows
+    assignment = request.GET.get('assignment','')
+    if assignment == 'mine':
+        rows = [d for d in rows if d.assignee_id == request.user.pk]
+    elif assignment == 'unassigned':
+        rows = [d for d in rows if d.assignee_id is None]
+    elif assignment == 'inactive':
+        rows = [d for d in rows if d.assignee_id and not d.assignee.is_active]
+    elif assignment:
+        rows = [d for d in rows if str(d.assignee_id) == assignment]
     query = request.GET.get('q','').strip().lower()
     if query:
         rows = [d for d in rows if query in d.name.lower() or query in d.code.lower()]
@@ -55,7 +65,7 @@ def index(request):
         rows = [d for d in rows if d.review_status==request.GET['review_status']]
     for d in rows:
         d.missing_items = d.missing(definitions)
-    return render(request,'registry/index.html',{'rows':rows,'summary':summary,'processes':sorted({d.process for d in all_rows if d.process}),'equipments':sorted({d.equipment for d in all_rows if d.equipment}),'collections':['준비 중','수집 중','일시 중단','종료'],'inputs':['미입력 있음','입력 완료'],'reviews':['미점검','보완 필요','점검 완료']})
+    return render(request,'registry/index.html',{'rows':rows,'summary':summary,'assignment':assignment,'assignees':get_user_model().objects.filter(assigned_datasets__archived=False).distinct().order_by('username'),'processes':sorted({d.process for d in all_rows if d.process}),'equipments':sorted({d.equipment for d in all_rows if d.equipment}),'collections':['준비 중','수집 중','일시 중단','종료'],'inputs':['미입력 있음','입력 완료'],'reviews':['미점검','보완 필요','점검 완료']})
 
 @login_required
 def detail(request,pk):
@@ -68,6 +78,7 @@ def detail(request,pk):
 def edit(request,pk=None):
     obj = get_object_or_404(Dataset,pk=pk,archived=False) if pk else Dataset()
     before = values(obj) if pk else {}
+    before['assignee_details'] = obj.assignee_snapshot()
     before_cols = [values(c) for c in obj.columns.all()] if pk else []
     form = DatasetForm(request.POST or None,instance=obj)
     formset = ColumnFormSet(request.POST or None,instance=obj,prefix='columns')
@@ -87,6 +98,7 @@ def edit(request,pk=None):
                     formset.instance=obj
                     formset.save()
                     after=values(obj)
+                    after['assignee_details']=obj.assignee_snapshot()
                     before['columns']=before_cols
                     after['columns']=[values(c) for c in obj.columns.all()]
                     audit(request.user,obj.code,before,after,obj,'수정' if pk else '등록')
@@ -223,3 +235,24 @@ def extra_edit(request,pk=None):
             form.save(); audit(request.user,f'추가 항목 {obj.key}',before,values(obj),operation='항목 설정')
         messages.success(request,'추가 항목을 저장했습니다.'); return redirect('settings')
     return render(request,'registry/form.html',{'form':form,'title':'추가 항목 설정','subtitle':'기존 값과 제출본은 유지됩니다. 항목 제거는 비활성화를 사용하세요.','back':'/settings/'})
+
+@manager_only
+def accounts(request):
+    users = get_user_model().objects.annotate(
+        dataset_count=Count('assigned_datasets',filter=Q(assigned_datasets__archived=False))
+    ).order_by('-is_active','username')
+    return render(request,'registry/accounts.html',{'accounts':users})
+
+@manager_only
+def account_create(request):
+    form = AssigneeAccountForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        with transaction.atomic():
+            user = form.save()
+            audit(request.user,f'담당 계정 {user.username}',{},
+                  {'username':user.username,'name':user.get_full_name(),'role':'조회자'},operation='계정 등록')
+        messages.success(request,f'{user.username} 계정을 등록했습니다. 데이터 수정 화면에서 담당 계정으로 연결하세요.')
+        return redirect('accounts')
+    return render(request,'registry/form.html',{'form':form,'title':'담당자 계정 등록',
+        'subtitle':'조회 권한의 로그인 계정을 생성합니다. 비밀번호는 담당자에게 별도로 전달하세요.',
+        'back':'/settings/accounts/'})

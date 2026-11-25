@@ -1,0 +1,9 @@
+{% extends 'base.html' %}
+{% block title %}담당자 계정 · 제조데이터 관리대장{% endblock %}
+{% block content %}
+<a class="back" href="{% url 'settings' %}">사업·항목 설정</a>
+<header class="page-header"><div><span class="eyebrow">DATA OWNERSHIP</span><h1>담당자 계정</h1><p>로그인 계정을 데이터셋의 담당자와 연결하세요.</p></div><a class="button primary" href="{% url 'account_create' %}">+ 계정 등록</a></header>
+<div class="notice"><strong>계정 등록 후 데이터 목록에서 담당자를 지정하세요.</strong><p>이름이 같아도 자동으로 연결하지 않습니다. 새 계정은 조회 권한으로 생성되며, 담당 계정 연결과 수정 권한은 별도로 관리됩니다.</p></div>
+<section class="panel"><div class="panel-heading"><h2>등록된 계정</h2><a href="{% url 'index' %}?assignment=unassigned">계정 미연결 데이터 확인</a></div><div class="table-wrap"><table><thead><tr><th>이름</th><th>로그인 ID</th><th>권한</th><th>상태</th><th>담당 데이터</th></tr></thead><tbody>{% for account in accounts %}<tr><td>{{ account.get_full_name|default:'이름 미등록' }}</td><td class="mono">{{ account.username }}</td><td>{% if account.is_staff %}관리자{% else %}조회자{% endif %}</td><td><span class="badge {% if account.is_active %}success{% else %}warning{% endif %}">{{ account.is_active|yesno:'활성,비활성' }}</span></td><td><a href="{% url 'index' %}?assignment={{ account.pk }}">{{ account.dataset_count }}건 보기</a></td></tr>{% empty %}<tr><td colspan="5" class="empty">등록된 계정이 없습니다.</td></tr>{% endfor %}</tbody></table></div></section>
+<p class="footnote">연결된 계정은 삭제할 수 없습니다. 퇴사·이동 시 담당 계정을 재배정하고, 계정 비활성화는 시스템 관리자에게 요청하세요.</p>
+{% endblock %}

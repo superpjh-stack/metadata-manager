@@ -27,6 +27,9 @@ class Dataset(models.Model):
     process = models.CharField('관련 공정',max_length=150,blank=True)
     equipment = models.CharField('관련 설비',max_length=150,blank=True)
     owner = models.CharField('담당자',max_length=100,blank=True)
+    assignee = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name='담당 계정',
+                                 on_delete=models.PROTECT, related_name='assigned_datasets',
+                                 null=True, blank=True)
     source = models.CharField('원천 시스템 또는 장비',max_length=200,blank=True)
     method = models.CharField('수집방법',max_length=150,blank=True)
     frequency = models.CharField('수집주기',max_length=100,blank=True)
@@ -52,6 +55,17 @@ class Dataset(models.Model):
     @property
     def code(self):
         return f'MD-{self.pk:05d}' if self.pk else '신규'
+    @property
+    def assignee_label(self):
+        if not self.assignee_id:
+            return '계정 미연결'
+        name = self.assignee.get_full_name().strip()
+        return f'{name} ({self.assignee.username})' if name else self.assignee.username
+    def assignee_snapshot(self):
+        if not self.assignee_id:
+            return None
+        return {'id':self.assignee_id, 'username':self.assignee.username,
+                'name':self.assignee.get_full_name().strip(), 'active':self.assignee.is_active}
     def missing(self, definitions=None):
         missing = [str(self._meta.get_field(k).verbose_name) for k in REQUIRED if not str(getattr(self,k) or '').strip()]
         if definitions is None:

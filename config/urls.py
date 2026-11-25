@@ -20,6 +20,8 @@ urlpatterns = [
     path('import/',views.import_data,name='import'),
     path('import/template/',views.template_download,name='template'),
     path('settings/',views.settings_view,name='settings'),
+    path('settings/accounts/',views.accounts,name='accounts'),
+    path('settings/accounts/new/',views.account_create,name='account_create'),
     path('settings/fields/new/',views.extra_edit,name='extra_create'),
     path('settings/fields/<int:pk>/',views.extra_edit,name='extra_edit'),
 ]

@@ -170,13 +170,13 @@ def create_submission(datasets,user):
     project = Project.objects.first()
     snapshot = {'project':values(project) if project else {},'definitions':[values(f) for f in definitions],'datasets':[]}
     for obj in datasets:
-        snapshot['datasets'].append({'code':obj.code,'data':values(obj,DATA_FIELDS+['extras']),'missing':obj.missing(definitions),'review_status':obj.review_status,'columns':[values(c,COLUMN_FIELDS) for c in obj.columns.all()],'checks':[values(c,['date','inspector','opinion','needs_action','action','status','completed_on']) for c in obj.checks.all()]})
+        snapshot['datasets'].append({'code':obj.code,'assignee':obj.assignee_snapshot(),'data':values(obj,DATA_FIELDS+['extras']),'missing':obj.missing(definitions),'review_status':obj.review_status,'columns':[values(c,COLUMN_FIELDS) for c in obj.columns.all()],'checks':[values(c,['date','inspector','opinion','needs_action','action','status','completed_on']) for c in obj.checks.all()]})
     result = Submission(created_by=user,snapshot=snapshot)
     wb = Workbook(); wb.remove(wb.active)
     p = snapshot['project']
     sheet(wb,'제출정보',['항목','내용'],[['기업명',p.get('company','')],['사업명',p.get('name','')],['사업 시작일',project.start if project else None],['사업 종료일',project.end if project else None],['제출본 ID',str(result.id)],['생성일',timezone.localtime(result.created_at).replace(tzinfo=None)],['생성자',user.username],['데이터셋 수',len(datasets)],['안내','일반 제출 참고용입니다. 공식 확정 양식 및 적합성 판정이 아닙니다. 수집 상태는 담당자의 기록입니다.']])
     rows = snapshot['datasets']
-    sheet(wb,'데이터 목록',['관리번호','데이터명','공정','설비','담당자','수집 상태','입력 상태','점검 상태'],[[r['code'],r['data']['name'],r['data']['process'],r['data']['equipment'],r['data']['owner'],r['data']['collection_status'],'미입력 있음' if r['missing'] else '입력 완료',r['review_status']] for r in rows])
+    sheet(wb,'데이터 목록',['관리번호','데이터명','공정','설비','담당자','수집 상태','입력 상태','점검 상태','담당 계정','담당 계정 이름'],[[r['code'],r['data']['name'],r['data']['process'],r['data']['equipment'],r['data']['owner'],r['data']['collection_status'],'미입력 있음' if r['missing'] else '입력 완료',r['review_status'],(r['assignee'] or {}).get('username',''),(r['assignee'] or {}).get('name','')] for r in rows])
     sheet(wb,'데이터 정의',['관리번호']+HEADERS[1:],[[r['code']]+[date.fromisoformat(r['data'][k]) if k=='started_on' and r['data'][k] else r['data'][k] for k in DATA_FIELDS] for r in rows])
     sheet(wb,'컬럼 정의',['관리번호']+COLUMN_HEADERS[1:],[[r['code']]+[c[k] for k in COLUMN_FIELDS] for r in rows for c in r['columns']])
     sheet(wb,'점검 및 조치',['관리번호','점검일','점검자','점검 의견','보완 필요','조치 내용','보완 상태','완료일'],[[r['code'],date.fromisoformat(c['date']),c['inspector'],c['opinion'],c['needs_action'],c['action'],c['status'] if c['needs_action'] else '보완 불필요',date.fromisoformat(c['completed_on']) if c['completed_on'] else None] for r in rows for c in r['checks']])

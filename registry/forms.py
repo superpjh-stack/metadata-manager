@@ -1,6 +1,9 @@
 from pathlib import Path
 from zipfile import ZipFile, BadZipFile
 from django import forms
+from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import UserCreationForm
+from django.db.models import Q
 from django.forms import inlineformset_factory
 from .models import Dataset, Column, Check, Project, ExtraField, REQUIRED
 
@@ -9,10 +12,20 @@ class DatasetForm(forms.ModelForm):
     revision = forms.CharField(widget=forms.HiddenInput,required=False)
     class Meta:
         model = Dataset
-        fields = DATA_FIELDS
+        fields = DATA_FIELDS[:5] + ['assignee'] + DATA_FIELDS[5:]
         widgets = {'started_on':forms.DateInput(attrs={'type':'date'})}
     def __init__(self,*args,**kwargs):
         super().__init__(*args,**kwargs)
+        self.original_assignee_id = self.instance.assignee_id
+        self.fields['assignee'].queryset = get_user_model().objects.filter(
+            Q(is_active=True) | Q(pk=self.original_assignee_id)).order_by('first_name','username')
+        self.fields['assignee'].label_from_instance = lambda user: (
+            f'{user.get_full_name().strip()} ({user.username})' if user.get_full_name().strip() else user.username
+        ) + (' · 비활성' if not user.is_active else '')
+        self.fields['assignee'].empty_label = '계정 미연결'
+        self.fields['assignee'].help_text = '실제 로그인 계정을 선택하세요. 계정 연결은 접근·수정 권한을 변경하지 않습니다.'
+        self.fields['owner'].label = '담당자 표기명'
+        self.fields['owner'].help_text = '기존 이름·외부 담당자명은 그대로 보존합니다. 비어 있으면 선택한 계정 이름으로 채웁니다.'
         if self.instance.pk:
             self.fields['revision'].initial = self.instance.updated_at.isoformat()
         for field in self.fields.values():
@@ -24,6 +37,14 @@ class DatasetForm(forms.ModelForm):
         for definition in self.definitions:
             self.fields['extra_'+definition.key] = forms.CharField(label=definition.label,help_text=definition.description,required=False,widget=forms.Textarea(attrs={'rows':3}) if definition.multiline else forms.TextInput,initial=self.instance.extras.get(definition.key,''))
             self.fields['extra_'+definition.key].metadata_required = definition.required
+    def clean(self):
+        data = super().clean()
+        assignee = data.get('assignee')
+        if assignee and not assignee.is_active and assignee.pk != self.original_assignee_id:
+            self.add_error('assignee','비활성 계정은 새 담당자로 지정할 수 없습니다.')
+        if assignee and not data.get('owner'):
+            data['owner'] = (assignee.get_full_name().strip() or assignee.username)[:100]
+        return data
     def save(self,commit=True):
         obj = super().save(commit=False)
         obj.extras = dict(obj.extras)
@@ -34,6 +55,20 @@ class DatasetForm(forms.ModelForm):
         return obj
 
 ColumnFormSet = inlineformset_factory(Dataset,Column,fields=['name','meaning','dtype','unit','required','notes','order'],extra=1,can_delete=True)
+
+class AssigneeAccountForm(UserCreationForm):
+    first_name = forms.CharField(label='이름',max_length=100)
+    class Meta(UserCreationForm.Meta):
+        model = get_user_model()
+        fields = ['username','first_name']
+    def save(self,commit=True):
+        user = super().save(commit=False)
+        user.is_staff = False
+        user.is_superuser = False
+        user.is_active = True
+        if commit:
+            user.save()
+        return user
 
 class CheckForm(forms.ModelForm):
     class Meta:
