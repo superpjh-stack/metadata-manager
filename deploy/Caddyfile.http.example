@@ -1,0 +1,4 @@
+# Add to the existing port-80 gateway (/opt/gerardo-ai-private/Caddyfile).
+http://metadata.187.52.127.215.sslip.io {
+    redir https://metadata.187.52.127.215.sslip.io{uri} permanent
+}

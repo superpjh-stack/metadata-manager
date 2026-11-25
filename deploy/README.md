@@ -47,3 +47,5 @@ References: [Hostinger project management](https://www.hostinger.com/support/hos
 - Verified real administrator login with CSRF, Secure session cookies, hashed static assets, all main pages, evidence download and existing submission download.
 - Dedicated HTTPS hostname; HSTS is limited to this hostname (no includeSubDomains or preload).
 - Deployment tests: 26 passing, including trusted HTTPS proxy handling and health endpoint.
+
+HTTP redirect is served by the existing port-80 gateway `gerardo-ai-private-https-1` (`/opt/gerardo-ai-private/Caddyfile`), using the separate site in `Caddyfile.http.example`. TLS/app routing is served by `rodem-mes-caddy-1` (`/docker/rodem-mes/Caddyfile`). Both original gateway configs were backed up as `Caddyfile.before-metadata-<timestamp>` and validated before graceful reload. Other sites were preserved.
