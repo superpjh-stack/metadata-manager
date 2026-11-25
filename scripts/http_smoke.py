@@ -8,7 +8,7 @@ def get(path):
         assert response.status==200
         return response.read().decode()
 def post(path,payload):
-    token=next(c.value for c in jar if c.name=='csrftoken')
+    token=next(c.value for c in jar if c.name=='metadata_csrftoken')
     request=urllib.request.Request(base+path,data=urllib.parse.urlencode({'csrfmiddlewaretoken':token,**payload}).encode(),headers={'Referer':base+path})
     with client.open(request) as response:
         assert response.status==200
@@ -22,7 +22,7 @@ assert '데이터 관리대장' in html and username in html
 for path,expected in [('/datasets/1/','temperature'),('/datasets/1/edit/','columns-TOTAL_FORMS'),('/submissions/','보관된 제출본'),('/settings/','예시 제조기업'),('/import/','표준 양식')]:
     assert expected in get(path),(path,expected)
 # A real multipart POST for a labeled demo evidence file.
-token=next(c.value for c in jar if c.name=='csrftoken')
+token=next(c.value for c in jar if c.name=='metadata_csrftoken')
 boundary='MetadataSmokeBoundary'
 body=(f'--{boundary}\r\nContent-Disposition: form-data; name="csrfmiddlewaretoken"\r\n\r\n{token}\r\n'
       f'--{boundary}\r\nContent-Disposition: form-data; name="description"\r\n\r\n가상 예시 증빙 (HTTP 검증)\r\n'

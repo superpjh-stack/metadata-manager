@@ -202,3 +202,10 @@ class WorkflowTests(TestCase):
         self.assertEqual(self.dataset.columns.count(),0)
         changes=Audit.objects.get(dataset=self.dataset).changes['columns']
         self.assertEqual(changes['before'][0]['name'],'old');self.assertEqual(changes['after'],[])
+    @override_settings(SECURE_SSL_REDIRECT=True, SECURE_PROXY_SSL_HEADER=('HTTP_X_FORWARDED_PROTO','https'))
+    def test_proxy_https_and_health(self):
+        response=self.client.get('/healthz/')
+        self.assertEqual(response.status_code,200)
+        self.assertEqual(response.content,b'ok')
+        self.assertEqual(self.client.get('/accounts/login/').status_code,301)
+        self.assertEqual(self.client.get('/accounts/login/',HTTP_X_FORWARDED_PROTO='https').status_code,200)

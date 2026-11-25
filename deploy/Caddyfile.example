@@ -1,0 +1,8 @@
+# Add this site to the existing HTTPS gateway, then validate and reload Caddy.
+metadata.187.52.127.215.sslip.io {
+    encode zstd gzip
+    request_body {
+        max_size 12MB
+    }
+    reverse_proxy metadata-manager-app:8000
+}

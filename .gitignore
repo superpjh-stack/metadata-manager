@@ -10,3 +10,7 @@ staticfiles/
 .DS_Store
 .local-demo-login
 demo-media/
+
+.env.*
+!.env.example
+data/

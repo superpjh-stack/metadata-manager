@@ -14,6 +14,12 @@ from .models import Dataset, Check, Column, Project, ExtraField, Attachment, Sub
 from .forms import DatasetForm, ColumnFormSet, CheckForm, ProjectForm, ExtraForm, AttachmentForm, DATA_FIELDS
 from .services import values, audit, import_template, parse_import, save_import, create_submission
 
+def health(request):
+    from django.db import connection
+    with connection.cursor() as cursor:
+        cursor.execute('SELECT 1')
+    return HttpResponse('ok',content_type='text/plain')
+
 def manager_only(view):
     @login_required
     @wraps(view)

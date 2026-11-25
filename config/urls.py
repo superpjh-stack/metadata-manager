@@ -2,6 +2,7 @@ from django.urls import path
 from django.contrib.auth import views as auth
 from registry import views
 urlpatterns = [
+    path('healthz/',views.health,name='health'),
     path('accounts/login/',auth.LoginView.as_view(template_name='registration/login.html'),name='login'),
     path('accounts/logout/',auth.LogoutView.as_view(),name='logout'),
     path('',views.index,name='index'),
